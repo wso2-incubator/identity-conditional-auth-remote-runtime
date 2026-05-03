@@ -78,7 +78,6 @@
         <!-- Plugin versions. -->
         <protobuf.plugin.version>0.6.1</protobuf.plugin.version>
         <os.plugin.version>1.7.1</os.plugin.version>
-        <build.helper.plugin.version>3.4.0</build.helper.plugin.version>
         <maven.compiler.plugin.version>3.11.0</maven.compiler.plugin.version>
         <maven.jar.plugin.version>3.3.0</maven.jar.plugin.version>
         <maven.dependency.plugin.version>3.6.1</maven.dependency.plugin.version>
@@ -180,50 +179,44 @@
                 <version>${maven.compiler.plugin.version}</version>
             </plugin>
 
-            <!-- Protobuf code generation bound to the generate-sources phase so
-                 `mvn clean install` produces the wire stubs in one pass. -->
+            <!--
+                Protobuf / gRPC code generation.
+
+                Generated sources are committed directly under src/main/java in the
+                packages declared by the .proto files' `java_package` option
+                (`org.wso2.carbon.identity.graaljs.proto` and
+                `org.wso2.carbon.identity.graaljs.proto.grpc`), so a clean
+                `mvn clean install` compiles them as part of the standard source
+                root — no lifecycle execution is needed, which also avoids the
+                v0.6.1 lifecycle-mode bug where `compile` and `compile-custom`
+                clobber each other's output when they share a parent directory.
+
+                Regenerate manually only when the .proto files change:
+
+                    mvn protobuf:compile protobuf:compile-custom
+
+                Both goals write into src/main/java (resolving the package path
+                from `java_package`, i.e. into the `graaljs/proto` and
+                `graaljs/proto/grpc` directories). `clearOutputDirectory` is kept
+                false so running one goal never wipes the other's output, and so
+                neighbouring hand-written sources under src/main/java are
+                preserved. If a message is REMOVED from a .proto file, delete its
+                stale .java by hand under the `graaljs/proto` (or
+                `graaljs/proto/grpc`) directory and commit the diff.
+            -->
             <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
                 <artifactId>protobuf-maven-plugin</artifactId>
                 <version>${protobuf.plugin.version}</version>
                 <configuration>
                     <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
-                    <protoSourceRoot>${project.basedir}/proto</protoSourceRoot>
+                    <protoSourceRoot>${project.basedir}/src/main/proto</protoSourceRoot>
                     <pluginId>grpc-java</pluginId>
                     <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}</pluginArtifact>
+                    <outputDirectory>${project.basedir}/src/main/java</outputDirectory>
+                    <clearOutputDirectory>false</clearOutputDirectory>
                 </configuration>
-                <executions>
-                    <execution>
-                        <id>protobuf-compile</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>compile</goal>
-                            <goal>compile-custom</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!-- Register protobuf generated sources for compilation. -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <version>${build.helper.plugin.version}</version>
-                <executions>
-                    <execution>
-                        <id>add-protobuf-sources</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>add-source</goal>
-                        </goals>
-                        <configuration>
-                            <sources>
-                                <source>${project.build.directory}/generated-sources/protobuf/java</source>
-                                <source>${project.build.directory}/generated-sources/protobuf/grpc-java</source>
-                            </sources>
-                        </configuration>
-                    </execution>
-                </executions>
+                <executions/>
             </plugin>
 
             <!-- Thin runtime jar — dependency jars live alongside in lib/.

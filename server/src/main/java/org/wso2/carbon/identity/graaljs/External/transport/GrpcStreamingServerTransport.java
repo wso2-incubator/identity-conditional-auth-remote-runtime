@@ -288,25 +288,24 @@ public class GrpcStreamingServerTransport {
             localCallbackClient = new HostCallbackClient(outbound, streamLock, sessionId);
             clientRef.set(localCallbackClient);
 
-            byte[] requestBytes = request.toByteArray();
             long engineStart = System.currentTimeMillis();
             System.out.println("[PERF] [" + engineStart + "] External EVALUATE_ENGINE_START session=" +
                     sessionId + " handleStartTs=" + startTime +
                     " engineStartTs=" + engineStart +
                     " setupMs=" + (engineStart - startTime));
-            byte[] responseBytes = engineService.handleEvaluate(requestBytes, localCallbackClient);
+            // Pass the parsed EvaluateRequest directly — gRPC already decoded the
+            // outer StreamMessage so the previous toByteArray()→parseFrom round-trip
+            // was pure overhead within the same JVM.
+            EvaluateResponse response = engineService.handleEvaluate(request, localCallbackClient);
             long engineEnd = System.currentTimeMillis();
             System.out.println("[PERF] [" + engineEnd + "] External EVALUATE_ENGINE_DONE session=" +
                     sessionId + " engineStartTs=" + engineStart +
                     " engineEndTs=" + engineEnd +
                     " engineMs=" + (engineEnd - engineStart));
 
-            EvaluateResponse response = EvaluateResponse.parseFrom(responseBytes);
-            long parseEnd = System.currentTimeMillis();
-
             if (log.isDebugEnabled()) {
                 log.debug("[gRPC-Streaming-Server] Evaluate completed in " +
-                        (parseEnd - startTime) + "ms, success: " + response.getSuccess());
+                        (engineEnd - startTime) + "ms, success: " + response.getSuccess());
             }
 
             // Send response back on stream. streamLock is the same monitor
@@ -323,12 +322,11 @@ public class GrpcStreamingServerTransport {
             System.out.println("[PERF] [" + sendTime + "] External EVALUATE_RESPONSE_SENT session=" +
                     sessionId + " success=" + response.getSuccess() +
                     " handleStartTs=" + startTime + " engineStartTs=" + engineStart +
-                    " engineEndTs=" + engineEnd + " parseEndTs=" + parseEnd +
+                    " engineEndTs=" + engineEnd +
                     " sentTs=" + sendTime +
                     " setupMs=" + (engineStart - startTime) +
                     " engineMs=" + (engineEnd - engineStart) +
-                    " parseMs=" + (parseEnd - engineEnd) +
-                    " sendMs=" + (sendTime - parseEnd) +
+                    " sendMs=" + (sendTime - engineEnd) +
                     " totalMs=" + (sendTime - startTime) +
                     " streamLifetimeMs=" + (sendTime - streamOpenTime));
 
@@ -391,25 +389,24 @@ public class GrpcStreamingServerTransport {
             localCallbackClient = new HostCallbackClient(outbound, streamLock, sessionId);
             clientRef.set(localCallbackClient);
 
-            byte[] requestBytes = request.toByteArray();
             long engineStart = System.currentTimeMillis();
             System.out.println("[PERF] [" + engineStart + "] External EXEC_CALLBACK_ENGINE_START session=" +
                     sessionId + " handleStartTs=" + startTime +
                     " engineStartTs=" + engineStart +
                     " setupMs=" + (engineStart - startTime));
-            byte[] responseBytes = engineService.handleExecuteCallback(requestBytes, localCallbackClient);
+            // Pass the parsed ExecuteCallbackRequest directly — same rationale as
+            // handleEvaluate: gRPC already decoded the outer StreamMessage, so the
+            // previous toByteArray()→parseFrom round-trip was pure overhead.
+            ExecuteCallbackResponse response = engineService.handleExecuteCallback(request, localCallbackClient);
             long engineEnd = System.currentTimeMillis();
             System.out.println("[PERF] [" + engineEnd + "] External EXEC_CALLBACK_ENGINE_DONE session=" +
                     sessionId + " engineStartTs=" + engineStart +
                     " engineEndTs=" + engineEnd +
                     " engineMs=" + (engineEnd - engineStart));
 
-            ExecuteCallbackResponse response = ExecuteCallbackResponse.parseFrom(responseBytes);
-            long parseEnd = System.currentTimeMillis();
-
             if (log.isDebugEnabled()) {
                 log.debug("[gRPC-Streaming-Server] ExecuteCallback completed in " +
-                        (parseEnd - startTime) + "ms, success: " + response.getSuccess());
+                        (engineEnd - startTime) + "ms, success: " + response.getSuccess());
             }
 
             synchronized (streamLock) {
@@ -423,12 +420,11 @@ public class GrpcStreamingServerTransport {
             System.out.println("[PERF] [" + sendTime + "] External EXEC_CALLBACK_RESPONSE_SENT session=" +
                     sessionId + " success=" + response.getSuccess() +
                     " handleStartTs=" + startTime + " engineStartTs=" + engineStart +
-                    " engineEndTs=" + engineEnd + " parseEndTs=" + parseEnd +
+                    " engineEndTs=" + engineEnd +
                     " sentTs=" + sendTime +
                     " setupMs=" + (engineStart - startTime) +
                     " engineMs=" + (engineEnd - engineStart) +
-                    " parseMs=" + (parseEnd - engineEnd) +
-                    " sendMs=" + (sendTime - parseEnd) +
+                    " sendMs=" + (sendTime - engineEnd) +
                     " totalMs=" + (sendTime - startTime) +
                     " streamLifetimeMs=" + (sendTime - streamOpenTime));
 

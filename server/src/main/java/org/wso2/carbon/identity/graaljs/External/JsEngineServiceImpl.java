@@ -37,6 +37,12 @@ import java.util.Map;
  * <p>
  * Value serialization (GraalVM Value ↔ protobuf) is delegated to {@link EngineValueSerializer}.
  * Host function calls are forwarded back to IS via {@link HostCallbackClient}.
+ * <p>
+ * The handlers exchange protobuf message objects (not byte arrays) with the gRPC
+ * transport — the bidi {@code StreamMessage} envelope is already a typed proto on
+ * both sides of this call, so re-encoding the inner request to bytes only to
+ * re-parse it here would be pure waste. gRPC is the only transport, fixed by
+ * design, so aligning to its schema directly is safe.
  */
 public class JsEngineServiceImpl {
 
@@ -54,20 +60,16 @@ public class JsEngineServiceImpl {
      * Handle an evaluate request with a pre-created callback client.
      * Used by streaming transport where the callback client uses the bidi stream.
      *
-     * @param requestBytes   Protobuf-encoded EvaluateRequest.
+     * @param request        Already-parsed {@link EvaluateRequest} from the bidi stream.
      * @param callbackClient Pre-created callback client for host function
      *                       callbacks.
-     * @return Protobuf-encoded EvaluateResponse.
+     * @return The {@link EvaluateResponse} to ship back on the same stream.
      */
-    public byte[] handleEvaluate(byte[] requestBytes, HostCallbackClient callbackClient) throws java.io.IOException {
+    public EvaluateResponse handleEvaluate(EvaluateRequest request, HostCallbackClient callbackClient) {
         if (log.isDebugEnabled()) {
             log.debug("[External] handleEvaluate (streaming) called");
         }
         long startTime = System.currentTimeMillis();
-
-        // Phase A: Request parse
-        EvaluateRequest request = EvaluateRequest.parseFrom(requestBytes);
-        long tRequestParsed = System.currentTimeMillis();
         if (log.isDebugEnabled()) {
             log.debug("[External] handleEvaluate (streaming) - session: {}, sourceId: {}",
                     request.getSessionId(), request.getSourceIdentifier());
@@ -146,13 +148,12 @@ public class JsEngineServiceImpl {
                 long callbackMs = callbackClient != null ? callbackClient.getCallbackTimeMs() : 0;
                 long elapsed = System.currentTimeMillis() - startTime;
                 long pureProcessingMs = elapsed - callbackMs;
-                byte[] responseBytes = EvaluateResponse.newBuilder()
+                EvaluateResponse response = EvaluateResponse.newBuilder()
                         .setSuccess(true)
                         .setElapsedMs(elapsed)
                         .setResult(valueSerializer.serializeValue(result))
                         .putAllUpdatedBindings(updatedBindings)
-                        .build()
-                        .toByteArray();
+                        .build();
                 long tResponseBuilt = System.currentTimeMillis();
                 if (log.isDebugEnabled()) {
                     log.debug(
@@ -160,11 +161,10 @@ public class JsEngineServiceImpl {
                             elapsed, pureProcessingMs, callbackMs);
                 }
                 if (log.isDebugEnabled()) {
-                    log.debug("[External] Phase timing (streaming): requestParse={}ms, contextSetup={}ms, " +
+                    log.debug("[External] Phase timing (streaming): contextSetup={}ms, " +
                             "bindingRestore={}ms, proxyCreate={}ms, jsEvaluate={}ms, " +
                             "bindingExtract={}ms, responseBuild={}ms, total={}ms",
-                            tRequestParsed - startTime,
-                            tContextSetup - tRequestParsed,
+                            tContextSetup - startTime,
                             tBindingsRestored - tContextSetup,
                             tProxyCreated - tBindingsRestored,
                             tJsEvaluated - tProxyCreated,
@@ -172,7 +172,7 @@ public class JsEngineServiceImpl {
                             tResponseBuilt - tBindingsExtracted,
                             elapsed);
                 }
-                return responseBytes;
+                return response;
             }
 
         } catch (PolyglotException e) {
@@ -182,8 +182,7 @@ public class JsEngineServiceImpl {
                     .setErrorMessage(e.getMessage() != null ? e.getMessage() : "Unknown PolyglotException")
                     .setErrorType("PolyglotException")
                     .setElapsedMs(System.currentTimeMillis() - startTime)
-                    .build()
-                    .toByteArray();
+                    .build();
 
         } catch (Throwable t) {
             log.error("FATAL: Throwable during evaluation (streaming)", t);
@@ -194,8 +193,7 @@ public class JsEngineServiceImpl {
                     .setErrorMessage(errorMessage)
                     .setErrorType(t.getClass().getName())
                     .setElapsedMs(System.currentTimeMillis() - startTime)
-                    .build()
-                    .toByteArray();
+                    .build();
         } finally {
             currentRegisteredFunctions.remove();
             // NOTE: Do NOT close callbackClient here - it's managed by the streaming
@@ -207,18 +205,14 @@ public class JsEngineServiceImpl {
      * Handle an execute callback request with a pre-created callback client.
      * Used by streaming transport where the callback client uses the bidi stream.
      *
-     * @param requestBytes   Protobuf-encoded ExecuteCallbackRequest.
+     * @param request        Already-parsed {@link ExecuteCallbackRequest} from the bidi stream.
      * @param callbackClient Pre-created callback client for host function
      *                       callbacks.
-     * @return Protobuf-encoded ExecuteCallbackResponse.
+     * @return The {@link ExecuteCallbackResponse} to ship back on the same stream.
      */
-    public byte[] handleExecuteCallback(byte[] requestBytes, HostCallbackClient callbackClient)
-            throws java.io.IOException {
+    public ExecuteCallbackResponse handleExecuteCallback(ExecuteCallbackRequest request,
+                                                         HostCallbackClient callbackClient) {
         long startTime = System.currentTimeMillis();
-
-        // Phase A: Request parse
-        ExecuteCallbackRequest request = ExecuteCallbackRequest.parseFrom(requestBytes);
-        long tRequestParsed = System.currentTimeMillis();
         if (log.isDebugEnabled()) {
             log.debug("[External] handleExecuteCallback (streaming) - session: {}", request.getSessionId());
         }
@@ -308,13 +302,12 @@ public class JsEngineServiceImpl {
                 long callbackMs = callbackClient != null ? callbackClient.getCallbackTimeMs() : 0;
                 long elapsed = System.currentTimeMillis() - startTime;
                 long pureProcessingMs = elapsed - callbackMs;
-                byte[] responseBytes = ExecuteCallbackResponse.newBuilder()
+                ExecuteCallbackResponse response = ExecuteCallbackResponse.newBuilder()
                         .setSuccess(true)
                         .setElapsedMs(elapsed)
                         .setResult(valueSerializer.serializeValue(result))
                         .putAllUpdatedBindings(updatedBindings)
-                        .build()
-                        .toByteArray();
+                        .build();
                 long tResponseBuilt = System.currentTimeMillis();
                 if (log.isDebugEnabled()) {
                     log.debug(
@@ -322,11 +315,10 @@ public class JsEngineServiceImpl {
                             elapsed, pureProcessingMs, callbackMs);
                 }
                 if (log.isDebugEnabled()) {
-                    log.debug("[External] Phase timing (streaming): requestParse={}ms, contextSetup={}ms, " +
+                    log.debug("[External] Phase timing (streaming): contextSetup={}ms, " +
                             "bindingRestore={}ms, proxyAndArgs={}ms, jsEvaluate={}ms, " +
                             "bindingExtract={}ms, responseBuild={}ms, total={}ms",
-                            tRequestParsed - startTime,
-                            tContextSetup - tRequestParsed,
+                            tContextSetup - startTime,
                             tBindingsRestored - tContextSetup,
                             tProxyAndArgsReady - tBindingsRestored,
                             tJsEvaluated - tProxyAndArgsReady,
@@ -334,7 +326,7 @@ public class JsEngineServiceImpl {
                             tResponseBuilt - tBindingsExtracted,
                             elapsed);
                 }
-                return responseBytes;
+                return response;
             }
 
         } catch (PolyglotException e) {
@@ -343,8 +335,7 @@ public class JsEngineServiceImpl {
                     .setSuccess(false)
                     .setErrorMessage(e.getMessage())
                     .setElapsedMs(System.currentTimeMillis() - startTime)
-                    .build()
-                    .toByteArray();
+                    .build();
 
         } catch (Throwable t) {
             log.error("FATAL: Throwable during callback execution (streaming)", t);
@@ -354,8 +345,7 @@ public class JsEngineServiceImpl {
                     .setSuccess(false)
                     .setErrorMessage(errorMessage)
                     .setElapsedMs(System.currentTimeMillis() - startTime)
-                    .build()
-                    .toByteArray();
+                    .build();
         } finally {
             currentRegisteredFunctions.remove();
             // NOTE: Do NOT close callbackClient here - it's managed by the streaming
@@ -458,80 +448,5 @@ public class JsEngineServiceImpl {
         );
 
         return context.asValue(dynamicProxy);
-    }
-    /**
-     * Handle a host function request (placeholder implementation).
-     * These requests are typically handled by the callback mechanism.
-     *
-     * @param requestBytes Protobuf-encoded HostFunctionRequest.
-     * @return Protobuf-encoded HostFunctionResponse.
-     */
-    public byte[] handleHostFunction(byte[] requestBytes) throws java.io.IOException {
-        HostFunctionRequest request = HostFunctionRequest.parseFrom(requestBytes);
-        if (log.isDebugEnabled()) {
-            log.debug("[External] handleHostFunction - session: {}, function: {}, args: {}",
-                    request.getSessionId(), request.getFunctionName(), request.getArgumentsCount());
-        }
-
-        // This is typically handled via callback mechanism during script execution
-        // This direct handler is mainly for logging purposes
-        HostFunctionResponse response = HostFunctionResponse.newBuilder()
-                .setSuccess(false)
-                .setErrorMessage("Host function calls should be handled via callback mechanism during script execution")
-                .build();
-
-        return response.toByteArray();
-    }
-
-    /**
-     * Handle a context property request (placeholder implementation).
-     * These requests are typically handled by the proxy mechanism during script
-     * execution.
-     *
-     * @param requestBytes Protobuf-encoded ContextPropertyRequest.
-     * @return Protobuf-encoded ContextPropertyResponse.
-     */
-    public byte[] handleContextProperty(byte[] requestBytes) throws java.io.IOException {
-        ContextPropertyRequest request = ContextPropertyRequest.parseFrom(requestBytes);
-        if (log.isDebugEnabled()) {
-            log.debug("[External] handleContextProperty - session: {}, property: {}, proxyType: {}",
-                    request.getSessionId(), request.getPropertyPath(), request.getProxyType());
-        }
-
-        // This is typically handled via proxy mechanism during script execution
-        // This direct handler is mainly for logging purposes
-        ContextPropertyResponse response = ContextPropertyResponse.newBuilder()
-                .setSuccess(false)
-                .setErrorMessage(
-                        "Context property access should be handled via proxy mechanism during script execution")
-                .build();
-
-        return response.toByteArray();
-    }
-
-    /**
-     * Handle a context property set request (placeholder implementation).
-     * These requests are typically handled by the proxy mechanism during script
-     * execution.
-     *
-     * @param requestBytes Protobuf-encoded ContextPropertySetRequest.
-     * @return Protobuf-encoded ContextPropertySetResponse.
-     */
-    public byte[] handleContextPropertySet(byte[] requestBytes) throws java.io.IOException {
-        ContextPropertySetRequest request = ContextPropertySetRequest.parseFrom(requestBytes);
-        if (log.isDebugEnabled()) {
-            log.debug("[External] handleContextPropertySet - session: {}, property: {}, value: {}",
-                    request.getSessionId(), request.getPropertyPath(), request.getValue());
-        }
-
-        // This is typically handled via proxy mechanism during script execution
-        // This direct handler is mainly for logging purposes
-        ContextPropertySetResponse response = ContextPropertySetResponse.newBuilder()
-                .setSuccess(false)
-                .setErrorMessage(
-                        "Context property setting should be handled via proxy mechanism during script execution")
-                .build();
-
-        return response.toByteArray();
     }
 }
