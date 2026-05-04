@@ -1,2 +1,0 @@
-io.grpc.internal.DnsNameResolverProvider
-io.grpc.netty.shaded.io.grpc.netty.UdsNameResolverProvider
