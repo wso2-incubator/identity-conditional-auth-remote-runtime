@@ -128,12 +128,30 @@
         <!-- IdentityRuntimeException referenced by GrpcConnectionManager.
              Version pinned explicitly because the parent depMgmt entry uses
              ${project.version}, which interpolates to *this* bundle's version
-             (1.0.0-SNAPSHOT) when consumed here, not the framework version. -->
+             (1.0.0-SNAPSHOT) when consumed here, not the framework version.
+
+             Excludes the legacy `org.ops4j.pax.logging:pax-logging-api:1.10.9`
+             that ships transitively here. The newer carbon kernel deps already
+             pull `org.wso2.org.ops4j.pax.logging:pax-logging-api:2.2.9-wso2v2`.
+             Both jars contain `org.ops4j.pax.logging.PaxLogger` and
+             `org.apache.commons.logging.internal.JclLogger`; with both on the
+             surefire classpath the classloader picks the newer `PaxLogger`
+             (which has only PaxMarker-based `warn(...)` overloads) but the
+             older `JclLogger` invokes `PaxLogger.warn(String, Throwable)` —
+             producing NoSuchMethodError on every `log.warn(msg, throwable)`
+             call from production code under test. The OSGi runtime is not
+             affected (provided scope, container provides exactly one). -->
         <dependency>
             <groupId>org.wso2.carbon.identity.framework</groupId>
             <artifactId>org.wso2.carbon.identity.base</artifactId>
             <version>${framework.version}</version>
             <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.ops4j.pax.logging</groupId>
+                    <artifactId>pax-logging-api</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!-- @javax.annotation.Generated emitted by the protoc gRPC stub generator. -->
         <dependency>
@@ -171,6 +189,44 @@
             <version>1.51.1</version>
         </dependency>
         <!-- Test dependencies for the suite owned by this bundle. -->
+        <!--
+            Test-classpath shims for carbon-identity-framework transitive deps.
+
+            Tests exercise the production code paths in this bundle (notably
+            `Serializer.toProto()` →
+             `JsGraalGraphEngineModeRouter.getInstance()` →
+             `IdentityUtil.getProperty(...)`), which forces the JVM to load
+            `org.wso2.carbon.identity.core.util.IdentityUtil`. That class's
+            bytecode references several exception types via `throws` clauses
+            and catch blocks, and the JVM resolves them eagerly during link.
+
+            In the original carbon-identity-framework multi-module build these
+            came in transitively because the parent pom managed every
+            framework dep version. Once this bundle was extracted as a
+            standalone module, those managed versions were lost — the
+            framework's installed pom (`org.wso2.carbon.identity.application.authentication.framework`)
+            declares the deps without a version, so Maven silently drops them
+            from transitive resolution and surefire ends up running with a
+            classpath missing several link-time references.
+
+            The pins below are the smallest set required to satisfy IdentityUtil's
+            exception graph. Versions match the carbon-identity-framework parent
+            pom at the time `remote.engine` was extracted. Production runtime
+            (OSGi) is unaffected — `provided` scope means none of these enter
+            the bundle, the OSGi container provides them.
+        -->
+        <dependency>
+            <groupId>org.wso2.carbon.identity.organization.management.core</groupId>
+            <artifactId>org.wso2.carbon.identity.organization.management.service</artifactId>
+            <version>1.1.48</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wso2.carbon.utils</groupId>
+            <artifactId>org.wso2.carbon.database.utils</artifactId>
+            <version>2.2.8</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
