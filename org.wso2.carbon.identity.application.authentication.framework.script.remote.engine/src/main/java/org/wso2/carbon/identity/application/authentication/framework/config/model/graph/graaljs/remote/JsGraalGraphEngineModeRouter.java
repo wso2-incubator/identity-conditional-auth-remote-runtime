@@ -26,12 +26,12 @@ import org.wso2.carbon.identity.core.util.IdentityUtil;
 
 import java.util.Locale;
 
-import static org.wso2.carbon.identity.application.authentication.framework.util.FrameworkConstants.AdaptiveAuthentication.DEFAULT_ENGINE_MODE;
-import static org.wso2.carbon.identity.application.authentication.framework.util.FrameworkConstants.AdaptiveAuthentication.DEFAULT_GRPC_TARGET;
-import static org.wso2.carbon.identity.application.authentication.framework.util.FrameworkConstants.AdaptiveAuthentication.DEFAULT_REMOTE_ENGINE_TRACING;
+import static org.wso2.carbon.identity.application.authentication.framework.config.model.graph.graaljs.remote.RemoteEngineConfigConstants.DEFAULT_ENGINE_MODE;
+import static org.wso2.carbon.identity.application.authentication.framework.config.model.graph.graaljs.remote.RemoteEngineConfigConstants.DEFAULT_GRPC_TARGET;
+import static org.wso2.carbon.identity.application.authentication.framework.config.model.graph.graaljs.remote.RemoteEngineConfigConstants.DEFAULT_REMOTE_ENGINE_TRACING;
+import static org.wso2.carbon.identity.application.authentication.framework.config.model.graph.graaljs.remote.RemoteEngineConfigConstants.GRAALJS_GRPC_TARGET;
+import static org.wso2.carbon.identity.application.authentication.framework.config.model.graph.graaljs.remote.RemoteEngineConfigConstants.GRAALJS_REMOTE_ENGINE_TRACING;
 import static org.wso2.carbon.identity.application.authentication.framework.util.FrameworkConstants.AdaptiveAuthentication.GRAALJS_ENGINE_MODE;
-import static org.wso2.carbon.identity.application.authentication.framework.util.FrameworkConstants.AdaptiveAuthentication.GRAALJS_GRPC_TARGET;
-import static org.wso2.carbon.identity.application.authentication.framework.util.FrameworkConstants.AdaptiveAuthentication.GRAALJS_REMOTE_ENGINE_TRACING;
 /**
  * Factory for creating JavaScript engines.
  * Supports LOCAL (in-JVM), REMOTE (External via gRPC), and HYBRID (per-request routing) modes.
