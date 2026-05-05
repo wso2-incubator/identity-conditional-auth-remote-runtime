@@ -166,7 +166,7 @@ public class HostCallbackClient implements Closeable {
                     ", session: " + sessionId);
         }
         long t0 = System.currentTimeMillis();
-        System.out.println("[PERF] [" + t0 + "] External HOST_FN_CALLBACK_START session=" +
+        log.debug("[PERF] [" + t0 + "] External HOST_FN_CALLBACK_START session=" +
                 sessionId + " function=" + functionName +
                 " startTs=" + t0);
 
@@ -184,7 +184,7 @@ public class HostCallbackClient implements Closeable {
             // accumulated for failed round-trips (matches the pre-merge
             // behaviour where the wrapper's addAndGet was skipped on throw).
             long tErr = System.currentTimeMillis();
-            System.out.println("[PERF] [" + tErr +
+            log.debug("[PERF] [" + tErr +
                     "] External HOST_FN_CALLBACK_ERROR session=" + sessionId +
                     " function=" + functionName +
                     " error=" + e.getMessage() +
@@ -201,7 +201,7 @@ public class HostCallbackClient implements Closeable {
         }
         HostFunctionResponse hfResponse = response.getHostFunctionResponse();
 
-        System.out.println("[PERF] [" + t2 + "] External HOST_FN_CALLBACK_RESPONSE session=" +
+        log.debug("[PERF] [" + t2 + "] External HOST_FN_CALLBACK_RESPONSE session=" +
                 sessionId + " function=" + functionName +
                 " success=" + hfResponse.getSuccess() +
                 " startTs=" + t0 + " responseTs=" + t2 +
@@ -250,7 +250,7 @@ public class HostCallbackClient implements Closeable {
                     ", session: " + sessionId);
         }
         long t0 = System.currentTimeMillis();
-        System.out.println("[PERF] [" + t0 + "] External CTX_PROP_CALLBACK_START session=" +
+        log.debug("[PERF] [" + t0 + "] External CTX_PROP_CALLBACK_START session=" +
                 sessionId + " path=" + propertyPath +
                 " startTs=" + t0);
 
@@ -265,7 +265,7 @@ public class HostCallbackClient implements Closeable {
             response = sendAndAwait(streamMsg);
         } catch (IOException e) {
             long tErr = System.currentTimeMillis();
-            System.out.println("[PERF] [" + tErr +
+            log.debug("[PERF] [" + tErr +
                     "] External CTX_PROP_CALLBACK_ERROR session=" + sessionId +
                     " path=" + propertyPath +
                     " error=" + e.getMessage() +
@@ -281,7 +281,7 @@ public class HostCallbackClient implements Closeable {
         }
         ContextPropertyResponse cpResponse = response.getContextPropertyResponse();
 
-        System.out.println("[PERF] [" + t2 + "] External CTX_PROP_CALLBACK_RESPONSE session=" +
+        log.debug("[PERF] [" + t2 + "] External CTX_PROP_CALLBACK_RESPONSE session=" +
                 sessionId + " path=" + propertyPath +
                 " success=" + cpResponse.getSuccess() +
                 " startTs=" + t0 + " responseTs=" + t2 +
@@ -320,7 +320,7 @@ public class HostCallbackClient implements Closeable {
                     ", session: " + sessionId);
         }
         long t0 = System.currentTimeMillis();
-        System.out.println("[PERF] [" + t0 + "] External CTX_PROP_SET_CALLBACK_START session=" +
+        log.debug("[PERF] [" + t0 + "] External CTX_PROP_SET_CALLBACK_START session=" +
                 sessionId + " path=" + propertyPath +
                 " startTs=" + t0);
 
@@ -335,7 +335,7 @@ public class HostCallbackClient implements Closeable {
             response = sendAndAwait(streamMsg);
         } catch (IOException e) {
             long tErr = System.currentTimeMillis();
-            System.out.println("[PERF] [" + tErr +
+            log.debug("[PERF] [" + tErr +
                     "] External CTX_PROP_SET_CALLBACK_ERROR session=" + sessionId +
                     " path=" + propertyPath +
                     " error=" + e.getMessage() +
@@ -351,7 +351,7 @@ public class HostCallbackClient implements Closeable {
         }
         ContextPropertySetResponse cpsResponse = response.getContextPropertySetResponse();
 
-        System.out.println("[PERF] [" + t2 + "] External CTX_PROP_SET_CALLBACK_RESPONSE session=" +
+        log.debug("[PERF] [" + t2 + "] External CTX_PROP_SET_CALLBACK_RESPONSE session=" +
                 sessionId + " path=" + propertyPath +
                 " success=" + cpsResponse.getSuccess() +
                 " startTs=" + t0 + " responseTs=" + t2 +
