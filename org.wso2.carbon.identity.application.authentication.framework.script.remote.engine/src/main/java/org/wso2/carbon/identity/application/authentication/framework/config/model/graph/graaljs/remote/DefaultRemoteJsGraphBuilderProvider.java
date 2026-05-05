@@ -58,7 +58,7 @@ public class DefaultRemoteJsGraphBuilderProvider implements RemoteJsGraphBuilder
      * service bound by {@code RemoteScriptEngineComponent}.
      */
     @Override
-    public boolean shouldRoute(AuthenticationContext authenticationContext) {
+    public boolean route(AuthenticationContext authenticationContext) {
 
         return JsGraalGraphEngineModeRouter.getInstance().resolveMode(authenticationContext)
                 == JsGraalGraphEngineModeRouter.ExecutionMode.REMOTE;
