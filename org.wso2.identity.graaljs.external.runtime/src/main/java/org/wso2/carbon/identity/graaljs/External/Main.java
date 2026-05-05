@@ -98,9 +98,9 @@ public class Main {
      */
     private void startGrpc(int port, int statementLimit, int threadPoolSize) throws IOException {
         log.info("[Main] Starting GraalJS Runtime in gRPC mode");
-        System.out.println("[Runtime-STARTUP] Starting WSO2 Identity GraalJS Runtime in gRPC mode");
-        System.out.println("[Runtime-STARTUP] Port: " + port);
-        System.out.println("[Runtime-STARTUP] Statement limit: " + statementLimit
+        log.debug("[Runtime-STARTUP] Starting WSO2 Identity GraalJS Runtime in gRPC mode");
+        log.debug("[Runtime-STARTUP] Port: " + port);
+        log.debug("[Runtime-STARTUP] Statement limit: " + statementLimit
                 + ", Thread pool size: " + threadPoolSize);
         System.out.flush();
 
@@ -122,13 +122,13 @@ public class Main {
         serverTransport.start();
 
         log.info("[Main] GraalJS Runtime started on: " + serverTransport.getAddress());
-        System.out.println("[Runtime-STARTUP] GraalJS Runtime listening on: " + serverTransport.getAddress());
+        log.debug("[Runtime-STARTUP] GraalJS Runtime listening on: " + serverTransport.getAddress());
         System.out.flush();
 
         // Set up shutdown hook
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             log.info("[Main] Shutting down GraalJS Runtime...");
-            System.out.println("[Runtime-SHUTDOWN] Shutting down GraalJS Runtime...");
+            log.debug("[Runtime-SHUTDOWN] Shutting down GraalJS Runtime...");
             System.out.flush();
             stop();
         }));

@@ -117,7 +117,7 @@ public class GrpcStreamingServerTransport {
                 .build()
                 .start();
 
-        System.out.println("[gRPC-Streaming-Server] mTLS server started on port: " + server.getPort());
+        log.debug("[gRPC-Streaming-Server] mTLS server started on port: " + server.getPort());
 
         if (log.isDebugEnabled()) {
             log.debug("[gRPC-Streaming-Server] Started on port: " + server.getPort());
@@ -187,7 +187,7 @@ public class GrpcStreamingServerTransport {
         String tsPassword = System.getProperty(
                 ExternalConstants.MTLS_TRUSTSTORE_PASSWORD_PROP, ExternalConstants.DEFAULT_KEYSTORE_PASSWORD);
 
-        System.out.println("[gRPC-Streaming-Server] mTLS PKCS#12 — keystore: " +
+        log.debug("[gRPC-Streaming-Server] mTLS PKCS#12 — keystore: " +
                 (ksPath != null ? ksPath : "classpath:" + ExternalConstants.DEFAULT_KEYSTORE_RESOURCE) +
                 ", truststore: " +
                 (tsPath != null ? tsPath : "classpath:" + ExternalConstants.DEFAULT_TRUSTSTORE_RESOURCE));
@@ -276,7 +276,7 @@ public class GrpcStreamingServerTransport {
             log.debug("[gRPC-Streaming-Server] handleEvaluate - session: " + sessionId);
         }
         long startTime = System.currentTimeMillis();
-        System.out.println("[PERF] [" + startTime + "] External EVALUATE_HANDLE_START session=" +
+        log.debug("[PERF] [" + startTime + "] External EVALUATE_HANDLE_START session=" +
                 sessionId + " streamOpenTs=" + streamOpenTime +
                 " handleStartTs=" + startTime +
                 " sinceStreamOpenMs=" + (startTime - streamOpenTime));
@@ -289,7 +289,7 @@ public class GrpcStreamingServerTransport {
             clientRef.set(localCallbackClient);
 
             long engineStart = System.currentTimeMillis();
-            System.out.println("[PERF] [" + engineStart + "] External EVALUATE_ENGINE_START session=" +
+            log.debug("[PERF] [" + engineStart + "] External EVALUATE_ENGINE_START session=" +
                     sessionId + " handleStartTs=" + startTime +
                     " engineStartTs=" + engineStart +
                     " setupMs=" + (engineStart - startTime));
@@ -298,7 +298,7 @@ public class GrpcStreamingServerTransport {
             // was pure overhead within the same JVM.
             EvaluateResponse response = engineService.handleEvaluate(request, localCallbackClient);
             long engineEnd = System.currentTimeMillis();
-            System.out.println("[PERF] [" + engineEnd + "] External EVALUATE_ENGINE_DONE session=" +
+            log.debug("[PERF] [" + engineEnd + "] External EVALUATE_ENGINE_DONE session=" +
                     sessionId + " engineStartTs=" + engineStart +
                     " engineEndTs=" + engineEnd +
                     " engineMs=" + (engineEnd - engineStart));
@@ -319,7 +319,7 @@ public class GrpcStreamingServerTransport {
                 outbound.onCompleted();
             }
             long sendTime = System.currentTimeMillis();
-            System.out.println("[PERF] [" + sendTime + "] External EVALUATE_RESPONSE_SENT session=" +
+            log.debug("[PERF] [" + sendTime + "] External EVALUATE_RESPONSE_SENT session=" +
                     sessionId + " success=" + response.getSuccess() +
                     " handleStartTs=" + startTime + " engineStartTs=" + engineStart +
                     " engineEndTs=" + engineEnd +
@@ -332,7 +332,7 @@ public class GrpcStreamingServerTransport {
 
         } catch (Exception e) {
             long errTime = System.currentTimeMillis();
-            System.out.println("[PERF] [" + errTime + "] External EVALUATE_ERROR session=" +
+            log.debug("[PERF] [" + errTime + "] External EVALUATE_ERROR session=" +
                     sessionId + " error=" + e.getMessage() +
                     " handleStartTs=" + startTime + " errorTs=" + errTime +
                     " totalMs=" + (errTime - startTime));
@@ -379,7 +379,7 @@ public class GrpcStreamingServerTransport {
             log.debug("[gRPC-Streaming-Server] handleExecuteCallback - session: " + sessionId);
         }
         long startTime = System.currentTimeMillis();
-        System.out.println("[PERF] [" + startTime + "] External EXEC_CALLBACK_HANDLE_START session=" +
+        log.debug("[PERF] [" + startTime + "] External EXEC_CALLBACK_HANDLE_START session=" +
                 sessionId + " streamOpenTs=" + streamOpenTime +
                 " handleStartTs=" + startTime +
                 " sinceStreamOpenMs=" + (startTime - streamOpenTime));
@@ -390,7 +390,7 @@ public class GrpcStreamingServerTransport {
             clientRef.set(localCallbackClient);
 
             long engineStart = System.currentTimeMillis();
-            System.out.println("[PERF] [" + engineStart + "] External EXEC_CALLBACK_ENGINE_START session=" +
+            log.debug("[PERF] [" + engineStart + "] External EXEC_CALLBACK_ENGINE_START session=" +
                     sessionId + " handleStartTs=" + startTime +
                     " engineStartTs=" + engineStart +
                     " setupMs=" + (engineStart - startTime));
@@ -399,7 +399,7 @@ public class GrpcStreamingServerTransport {
             // previous toByteArray()→parseFrom round-trip was pure overhead.
             ExecuteCallbackResponse response = engineService.handleExecuteCallback(request, localCallbackClient);
             long engineEnd = System.currentTimeMillis();
-            System.out.println("[PERF] [" + engineEnd + "] External EXEC_CALLBACK_ENGINE_DONE session=" +
+            log.debug("[PERF] [" + engineEnd + "] External EXEC_CALLBACK_ENGINE_DONE session=" +
                     sessionId + " engineStartTs=" + engineStart +
                     " engineEndTs=" + engineEnd +
                     " engineMs=" + (engineEnd - engineStart));
@@ -417,7 +417,7 @@ public class GrpcStreamingServerTransport {
                 outbound.onCompleted();
             }
             long sendTime = System.currentTimeMillis();
-            System.out.println("[PERF] [" + sendTime + "] External EXEC_CALLBACK_RESPONSE_SENT session=" +
+            log.debug("[PERF] [" + sendTime + "] External EXEC_CALLBACK_RESPONSE_SENT session=" +
                     sessionId + " success=" + response.getSuccess() +
                     " handleStartTs=" + startTime + " engineStartTs=" + engineStart +
                     " engineEndTs=" + engineEnd +
@@ -430,7 +430,7 @@ public class GrpcStreamingServerTransport {
 
         } catch (Exception e) {
             long errTime = System.currentTimeMillis();
-            System.out.println("[PERF] [" + errTime + "] External EXEC_CALLBACK_ERROR session=" +
+            log.debug("[PERF] [" + errTime + "] External EXEC_CALLBACK_ERROR session=" +
                     sessionId + " error=" + e.getMessage() +
                     " handleStartTs=" + startTime + " errorTs=" + errTime +
                     " totalMs=" + (errTime - startTime));
@@ -472,7 +472,7 @@ public class GrpcStreamingServerTransport {
         @Override
         public StreamObserver<StreamMessage> executeScript(StreamObserver<StreamMessage> responseObserver) {
             long streamOpenTime = System.currentTimeMillis();
-            System.out.println("[PERF] [" + streamOpenTime + "] External STREAM_OPENED" +
+            log.debug("[PERF] [" + streamOpenTime + "] External STREAM_OPENED" +
                     " streamOpenTs=" + streamOpenTime);
             if (log.isDebugEnabled()) {
                 log.debug("[gRPC-Streaming-Server] New stream opened");
@@ -500,7 +500,7 @@ public class GrpcStreamingServerTransport {
 
                     switch (message.getPayloadCase()) {
                         case EVALUATE_REQUEST:
-                            System.out.println("[PERF] [" + now + "] External EVALUATE_REQUEST_RECEIVED session=" +
+                            log.debug("[PERF] [" + now + "] External EVALUATE_REQUEST_RECEIVED session=" +
                                     sessionId + " streamOpenTs=" + streamOpenTime +
                                     " receivedTs=" + now +
                                     " sinceStreamOpenMs=" + (now - streamOpenTime));
@@ -511,7 +511,7 @@ public class GrpcStreamingServerTransport {
                             break;
 
                         case EXECUTE_CALLBACK_REQUEST:
-                            System.out.println("[PERF] [" + now + "] External EXEC_CALLBACK_REQUEST_RECEIVED session=" +
+                            log.debug("[PERF] [" + now + "] External EXEC_CALLBACK_REQUEST_RECEIVED session=" +
                                     sessionId + " streamOpenTs=" + streamOpenTime +
                                     " receivedTs=" + now +
                                     " sinceStreamOpenMs=" + (now - streamOpenTime));
@@ -524,7 +524,7 @@ public class GrpcStreamingServerTransport {
                         case HOST_FUNCTION_RESPONSE:
                         case CONTEXT_PROPERTY_RESPONSE:
                         case CONTEXT_PROPERTY_SET_RESPONSE:
-                            System.out.println("[PERF] [" + now + "] External CALLBACK_RESPONSE_RECEIVED session=" +
+                            log.debug("[PERF] [" + now + "] External CALLBACK_RESPONSE_RECEIVED session=" +
                                     sessionId + " type=" + message.getPayloadCase() +
                                     " streamOpenTs=" + streamOpenTime +
                                     " receivedTs=" + now +
@@ -552,7 +552,7 @@ public class GrpcStreamingServerTransport {
                 @Override
                 public void onError(Throwable t) {
                     long errTs = System.currentTimeMillis();
-                    System.out.println("[PERF] [" + errTs +
+                    log.debug("[PERF] [" + errTs +
                             "] External STREAM_ERROR" +
                             " streamOpenTs=" + streamOpenTime +
                             " errorTs=" + errTs +
@@ -568,7 +568,7 @@ public class GrpcStreamingServerTransport {
                 @Override
                 public void onCompleted() {
                     long completedTs = System.currentTimeMillis();
-                    System.out.println("[PERF] [" + completedTs +
+                    log.debug("[PERF] [" + completedTs +
                             "] External STREAM_COMPLETED_BY_CLIENT" +
                             " streamOpenTs=" + streamOpenTime +
                             " completedTs=" + completedTs +

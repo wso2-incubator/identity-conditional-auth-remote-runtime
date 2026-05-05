@@ -71,13 +71,13 @@ class HostFunctionStub implements ProxyExecutable, ProxyObject {
 
     @Override
     public Object execute(Value... args) {
-        System.out.println(
+        log.debug(
                 "[DEBUG-External] Host function '" + functionName + "' called with " + args.length + " args");
         if (log.isDebugEnabled()) {
             log.debug("[External-Stub] Host function '{}' called with {} args", functionName, args.length);
         }
         if (callbackClient == null) {
-            System.out.println("[DEBUG-External] ERROR: No callback client!");
+            log.debug("[DEBUG-External] ERROR: No callback client!");
             log.error("[External-Stub] Host function '{}' called but no callback client available!", functionName);
             return null;
         }
@@ -86,9 +86,9 @@ class HostFunctionStub implements ProxyExecutable, ProxyObject {
             // Convert args to Java objects
             Object[] javaArgs = new Object[args.length];
             for (int i = 0; i < args.length; i++) {
-                System.out.println("[DEBUG-External] Converting arg[" + i + "]: " + args[i]);
+                log.debug("[DEBUG-External] Converting arg[" + i + "]: " + args[i]);
                 javaArgs[i] = convertToJava(args[i]);
-                System.out.println("[DEBUG-External] Converted arg[" + i + "] to: " +
+                log.debug("[DEBUG-External] Converted arg[" + i + "] to: " +
                         (javaArgs[i] != null ? javaArgs[i].getClass().getSimpleName() : "null"));
                 if (log.isDebugEnabled()) {
                     log.debug("[External-Stub] Converted arg[{}] to: {}", i,
@@ -96,12 +96,12 @@ class HostFunctionStub implements ProxyExecutable, ProxyObject {
                 }
             }
 
-            System.out.println("[DEBUG-External] Invoking callback to IS for '" + functionName + "'");
+            log.debug("[DEBUG-External] Invoking callback to IS for '" + functionName + "'");
             if (log.isDebugEnabled()) {
                 log.debug("[External-Stub] Invoking callback to IS for '{}' with {} args", functionName, javaArgs.length);
             }
             Object result = callbackClient.invokeHostFunction(functionName, javaArgs);
-            System.out.println("[DEBUG-External] Callback returned: "
+            log.debug("[DEBUG-External] Callback returned: "
                     + (result != null ? result.getClass().getSimpleName() : "null"));
             if (log.isDebugEnabled()) {
                 log.debug("[External-Stub] Callback returned: {}",
@@ -146,7 +146,7 @@ class HostFunctionStub implements ProxyExecutable, ProxyObject {
                             elements[i] = new DynamicContextProxy(
                                     callbackClient.getSessionId(), callbackClient, proxyType, basePath);
                             hasProxyElements = true;
-                            System.out.println("[DEBUG-External] List element[" + i +
+                            log.debug("[DEBUG-External] List element[" + i +
                                     "] -> DynamicContextProxy refId=" + referenceId);
                             continue;
                         }
@@ -154,7 +154,7 @@ class HostFunctionStub implements ProxyExecutable, ProxyObject {
                     elements[i] = element;
                 }
                 if (hasProxyElements) {
-                    System.out.println("[DEBUG-External] Returning ProxyArray with " +
+                    log.debug("[DEBUG-External] Returning ProxyArray with " +
                             elements.length + " elements (proxy-wrapped)");
                     return ProxyArray.fromArray(elements);
                 }
@@ -162,7 +162,7 @@ class HostFunctionStub implements ProxyExecutable, ProxyObject {
 
             return result;
         } catch (Exception e) {
-            System.out.println("[DEBUG-External] ERROR: " + e.getMessage());
+            log.debug("[DEBUG-External] ERROR: " + e.getMessage());
             log.error("[External-Stub] Error calling host function: " + functionName, e);
             throw new RuntimeException("Host function call failed: " + e.getMessage(), e);
         }
@@ -207,7 +207,7 @@ class HostFunctionStub implements ProxyExecutable, ProxyObject {
                 marker.put(ExternalConstants.IS_CONTEXT_PROXY, true);
                 marker.put(ExternalConstants.PROXY_TYPE_FIELD, proxy.getProxyType());
                 marker.put(ExternalConstants.BASE_PATH_FIELD, proxy.getBasePath());
-                System.out.println("[DEBUG-External] Converting DynamicContextProxy to marker: type=" +
+                log.debug("[DEBUG-External] Converting DynamicContextProxy to marker: type=" +
                         proxy.getProxyType() + ", basePath=" + proxy.getBasePath());
                 if (log.isDebugEnabled()) {
                     log.debug("[External-Stub] Converting DynamicContextProxy to marker: type={}, basePath={}",
@@ -219,7 +219,7 @@ class HostFunctionStub implements ProxyExecutable, ProxyObject {
         if (val.hasMembers()) {
             Map<String, Object> map = new HashMap<>();
             Set<String> memberKeys = val.getMemberKeys();
-            System.out.println(
+            log.debug(
                     "[DEBUG-External] Converting object with " + memberKeys.size() + " members: " + memberKeys);
             if (log.isDebugEnabled()) {
                 log.debug("[External-Stub] Converting object with {} members: {}",
@@ -227,7 +227,7 @@ class HostFunctionStub implements ProxyExecutable, ProxyObject {
             }
             for (String key : memberKeys) {
                 Value memberVal = val.getMember(key);
-                System.out.println("[DEBUG-External] Member '" + key + "': isNull="
+                log.debug("[DEBUG-External] Member '" + key + "': isNull="
                         + (memberVal == null || memberVal.isNull()) +
                         ", canExecute=" + (memberVal != null && memberVal.canExecute()) +
                         ", hasMembers=" + (memberVal != null && memberVal.hasMembers()));
@@ -240,7 +240,7 @@ class HostFunctionStub implements ProxyExecutable, ProxyObject {
                             memberVal != null && memberVal.hasArrayElements());
                 }
                 Object converted = convertToJava(memberVal);
-                System.out.println("[DEBUG-External] Member '" + key + "' converted to type: " +
+                log.debug("[DEBUG-External] Member '" + key + "' converted to type: " +
                         (converted != null ? converted.getClass().getSimpleName() : "null"));
                 if (log.isDebugEnabled()) {
                     log.debug("[External-Stub] Member '{}' converted to: {} (type: {})",
@@ -253,7 +253,7 @@ class HostFunctionStub implements ProxyExecutable, ProxyObject {
                 }
                 map.put(key, converted);
             }
-            System.out.println("[DEBUG-External] Final map has " + map.size() + " entries: " + map.keySet());
+            log.debug("[DEBUG-External] Final map has " + map.size() + " entries: " + map.keySet());
             if (log.isDebugEnabled()) {
                 log.debug("[External-Stub] Final map has {} entries: {}", map.size(), map.keySet());
             }
