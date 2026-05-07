@@ -20,15 +20,14 @@ package org.wso2.carbon.identity.application.authentication.framework.script.eng
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.carbon.identity.application.authentication.framework.config.model.graph.graaljs.remote.JsGraalGraphEngineModeRouter;
-import org.wso2.carbon.identity.application.authentication.framework.config.model.graph.graaljs.remote.ScriptEngineModeResolver;
+import org.wso2.carbon.identity.application.authentication.framework.config.model.graph.graaljs.ScriptEngineModeResolver;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 
 /**
  * Default implementation of {@link ScriptEngineModeResolver}.
  * <p>
- * Always resolves to the LOCAL engine.
- * This provides a safe default when no custom per-request routing logic is configured.
+ * Always resolves to {@link ScriptEngineModeResolver.ExecutionMode#LOCAL}, providing a
+ * safe default when no custom per-request routing logic is configured.
  * <p>
  * This implementation can be replaced by dropping a custom OSGi bundle into the
  * server's dropins folder with a higher service ranking.
@@ -38,23 +37,21 @@ public class DefaultScriptEngineModeResolver implements ScriptEngineModeResolver
     private static final Log log = LogFactory.getLog(DefaultScriptEngineModeResolver.class);
 
     @Override
-    public JsGraalGraphEngineModeRouter.ExecutionMode resolve(AuthenticationContext authenticationContext) {
+    public ExecutionMode resolve(AuthenticationContext authenticationContext) {
 
         if (authenticationContext == null) {
             if (log.isDebugEnabled()) {
                 log.debug("[DefaultScriptEngineModeResolver] AuthenticationContext is null, falling back to LOCAL");
             }
-            return JsGraalGraphEngineModeRouter.ExecutionMode.LOCAL;
+            return ExecutionMode.LOCAL;
         }
-
-        String spName = authenticationContext.getServiceProviderName();
-        String tenantDomain = authenticationContext.getTenantDomain();
 
         if (log.isDebugEnabled()) {
-            log.debug("[DefaultScriptEngineModeResolver] Resolving engine mode for SP: " + spName +
-                    ", tenant: " + tenantDomain);
+            log.debug("[DefaultScriptEngineModeResolver] Resolving engine mode for SP: " +
+                    authenticationContext.getServiceProviderName() +
+                    ", tenant: " + authenticationContext.getTenantDomain());
         }
 
-        return JsGraalGraphEngineModeRouter.ExecutionMode.LOCAL;
+        return ExecutionMode.LOCAL;
     }
 }

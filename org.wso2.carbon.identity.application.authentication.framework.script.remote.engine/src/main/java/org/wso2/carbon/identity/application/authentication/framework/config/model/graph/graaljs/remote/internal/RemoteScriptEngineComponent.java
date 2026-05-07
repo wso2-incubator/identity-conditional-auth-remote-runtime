@@ -25,12 +25,8 @@ import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
-import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferenceCardinality;
-import org.osgi.service.component.annotations.ReferencePolicy;
 import org.wso2.carbon.identity.application.authentication.framework.config.model.graph.graaljs.RemoteJsGraphBuilderProvider;
 import org.wso2.carbon.identity.application.authentication.framework.config.model.graph.graaljs.remote.DefaultRemoteJsGraphBuilderProvider;
-import org.wso2.carbon.identity.application.authentication.framework.config.model.graph.graaljs.remote.ScriptEngineModeResolver;
 
 /**
  * OSGi Declarative Service component for registering the
@@ -83,24 +79,5 @@ public class RemoteScriptEngineComponent {
         if (log.isDebugEnabled()) {
             log.debug("RemoteScriptEngineComponent deactivated.");
         }
-    }
-
-    @Reference(
-            name = "script.engine.mode.resolver",
-            service = ScriptEngineModeResolver.class,
-            cardinality = ReferenceCardinality.OPTIONAL,
-            policy = ReferencePolicy.DYNAMIC,
-            unbind = "unsetScriptEngineModeResolver"
-    )
-    protected void setScriptEngineModeResolver(ScriptEngineModeResolver resolver) {
-
-        RemoteScriptEngineDataHolder.getInstance().setScriptEngineModeResolver(resolver);
-        log.info("ScriptEngineModeResolver set: " + resolver.getClass().getName());
-    }
-
-    protected void unsetScriptEngineModeResolver(ScriptEngineModeResolver resolver) {
-
-        RemoteScriptEngineDataHolder.getInstance().setScriptEngineModeResolver(null);
-        log.info("ScriptEngineModeResolver unset.");
     }
 }

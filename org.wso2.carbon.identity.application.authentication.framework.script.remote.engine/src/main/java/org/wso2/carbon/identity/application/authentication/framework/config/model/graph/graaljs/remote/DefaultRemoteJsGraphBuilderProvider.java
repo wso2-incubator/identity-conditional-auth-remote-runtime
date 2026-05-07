@@ -34,6 +34,10 @@ import java.util.Map;
  * over gRPC. Construction is intentionally cheap — each authentication request
  * gets its own builder instance, mirroring the per-request lifetime model used
  * by the local-mode {@code JsGraalGraphBuilder}.
+ * <p>
+ * Per-request HYBRID routing is no longer this provider's concern; that decision
+ * is owned by the framework's {@code ScriptEngineModeResolver} SPI, which the
+ * {@code script.engine.mode} bundle implements independently of this bundle.
  */
 public class DefaultRemoteJsGraphBuilderProvider implements RemoteJsGraphBuilderProvider {
 
@@ -50,17 +54,5 @@ public class DefaultRemoteJsGraphBuilderProvider implements RemoteJsGraphBuilder
                                      AuthGraphNode currentNode) {
 
         return new RemoteJsGraalGraphBuilder(authenticationContext, stepConfigMap, currentNode);
-    }
-
-    /**
-     * HYBRID-mode per-request decision. Delegates to {@link JsGraalGraphEngineModeRouter},
-     * whose HYBRID branch consults the optional {@code ScriptEngineModeResolver} OSGi
-     * service bound by {@code RemoteScriptEngineComponent}.
-     */
-    @Override
-    public boolean route(AuthenticationContext authenticationContext) {
-
-        return JsGraalGraphEngineModeRouter.getInstance().resolveMode(authenticationContext)
-                == JsGraalGraphEngineModeRouter.ExecutionMode.REMOTE;
     }
 }
