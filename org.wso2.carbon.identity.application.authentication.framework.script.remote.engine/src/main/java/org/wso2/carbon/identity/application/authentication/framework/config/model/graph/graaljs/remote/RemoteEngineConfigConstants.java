@@ -42,9 +42,6 @@ public final class RemoteEngineConfigConstants {
     /** Toggle for verbose tracing/perf logs in the remote engine package. */
     public static final String GRAALJS_REMOTE_ENGINE_TRACING = "AdaptiveAuth.GraalJS.RemoteEngineTracing";
 
-    /** Default engine mode applied when {@code AdaptiveAuth.GraalJS.EngineMode} is unset or invalid. */
-    public static final String DEFAULT_ENGINE_MODE = "LOCAL";
-
     /** Default gRPC target used when {@code AdaptiveAuth.GraalJS.GrpcTarget} is unset. */
     public static final String DEFAULT_GRPC_TARGET = "localhost:50051";
 

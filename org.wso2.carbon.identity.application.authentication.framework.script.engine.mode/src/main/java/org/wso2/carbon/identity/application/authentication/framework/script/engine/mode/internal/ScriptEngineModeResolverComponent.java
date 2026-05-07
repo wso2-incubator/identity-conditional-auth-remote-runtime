@@ -24,7 +24,7 @@ import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
-import org.wso2.carbon.identity.application.authentication.framework.config.model.graph.graaljs.remote.ScriptEngineModeResolver;
+import org.wso2.carbon.identity.application.authentication.framework.config.model.graph.graaljs.ScriptEngineModeResolver;
 import org.wso2.carbon.identity.application.authentication.framework.script.engine.mode.DefaultScriptEngineModeResolver;
 
 /**
