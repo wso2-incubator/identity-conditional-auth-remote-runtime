@@ -77,9 +77,10 @@ class HostFunctionStub implements ProxyExecutable, ProxyObject {
             log.debug("[External-Stub] Host function '{}' called with {} args", functionName, args.length);
         }
         if (callbackClient == null) {
-            log.debug("[DEBUG-External] ERROR: No callback client!");
-            log.error("[External-Stub] Host function '{}' called but no callback client available!", functionName);
-            return null;
+            throw new IllegalStateException(
+                    "Host function '" + functionName + "' invoked but no callback client is bound to " +
+                            "this stub. Stub was constructed without an active session — this should " +
+                            "not happen during a normal request lifecycle.");
         }
 
         try {
@@ -115,8 +116,11 @@ class HostFunctionStub implements ProxyExecutable, ProxyObject {
                 if (Boolean.TRUE.equals(resultMap.get(ExternalConstants.IS_HOST_REF))) {
                     String proxyType = (String) resultMap.get(ExternalConstants.PROXY_TYPE_FIELD);
                     String referenceId = (String) resultMap.get(ExternalConstants.REFERENCE_ID_FIELD);
-                    // "pojo" type uses proxyObjectCache (__proxyref__), others use hostRefCache (__hostref__)
-                    String basePath = (ExternalConstants.PROXY_TYPE_POJO.equals(proxyType) ? ExternalConstants.PROXY_REF_PREFIX : ExternalConstants.HOST_REF_PREFIX) + referenceId;
+                    // Top-level marker for a host-function return: IS stores the wrapper in
+                    // its top-level reference cache via storeHostReturnReference(...) and
+                    // serves reads under __hostref__. Nested wrappers (list/map elements)
+                    // take the __proxyref__ path further below — see the List handling.
+                    String basePath = ExternalConstants.HOST_REF_PREFIX + referenceId;
                     if (log.isDebugEnabled()) {
                         log.debug("[External-Stub] Creating DynamicContextProxy for host function return: " +
                                 "type={}, refId={}, basePath={}", proxyType, referenceId, basePath);
@@ -259,7 +263,18 @@ class HostFunctionStub implements ProxyExecutable, ProxyObject {
             }
             return map;
         }
-        return val.toString();
+        throw new IllegalStateException(
+                "Cannot convert host-function argument for '" + functionName +
+                        "': unmatched Polyglot Value shape. " +
+                        "isNull=" + val.isNull() +
+                        ", isString=" + val.isString() +
+                        ", isNumber=" + val.isNumber() +
+                        ", isBoolean=" + val.isBoolean() +
+                        ", canExecute=" + val.canExecute() +
+                        ", hasArrayElements=" + val.hasArrayElements() +
+                        ", isProxyObject=" + val.isProxyObject() +
+                        ", hasMembers=" + val.hasMembers() +
+                        ", toString=" + val);
     }
 
     // ============ ProxyObject — namespaced member access ============

@@ -49,11 +49,15 @@ public final class ValueSerializationUtils {
     // ─────────── Protobuf → Java ───────────
 
     /**
-     * Deserialize protobuf SerializedValue to a Java object.
-     * Handles all value cases including primitives, arrays, maps, and proxy objects.
+     * Wire → Java. The path used when something Java-side needs to read a
+     * SerializedValue back, mainly host-function-return decoding inside
+     * HostFunctionStub.execute and property reads from
+     * DynamicContextProxy.getMember.
      *
-     * @param sv The protobuf SerializedValue to deserialize.
-     * @return The deserialized Java object, or null if the value is null or unrecognized.
+     * Proxy markers come out as tagged maps (IS_HOST_REF=true). Building a
+     * real DynamicContextProxy from one of those is the caller's job, not
+     * this method's — keeps the deserializer free of session/callback-client
+     * coupling.
      */
     public static Object deserialize(SerializedValue sv) {
         if (sv == null) {
@@ -86,7 +90,9 @@ public final class ValueSerializationUtils {
             case PROXY_OBJECT:
                 return deserializeProxyMarker(sv.getProxyObject());
             default:
-                return null;
+                throw new IllegalStateException(
+                        "Unrecognized SerializedValue case: " + sv.getValueCase() +
+                                ". Wire schema may have evolved beyond this consumer's version.");
         }
     }
 
@@ -108,11 +114,11 @@ public final class ValueSerializationUtils {
     // ─────────── Java → Protobuf ──────────
 
     /**
-     * Serialize a Java object to protobuf SerializedValue.
-     * Handles String, Number, Boolean, arrays, lists, maps, and GraalVM Value instances.
-     *
-     * @param val The Java object to serialize.
-     * @return The serialized protobuf SerializedValue.
+     * Java → wire. For callers that already have a Java-typed value —
+     * primitives, Java containers, or a Polyglot Value that's been unwrapped
+     * to Object. Containers are walked element by element, and a Value falls
+     * through to serializeGraalValue so we don't duplicate the Polyglot
+     * dispatch ladder. Anything else is a programmer error and throws.
      */
     public static SerializedValue serialize(Object val) {
         if (val == null) {
@@ -156,19 +162,24 @@ public final class ValueSerializationUtils {
             Map<String, Object> mapVal = (Map<String, Object>) val;
             return serializeMap(mapVal);
         }
-        log.warn("Unknown type for serialization: {}", val.getClass().getName());
-        return SerializedValue.newBuilder()
-                .setStringValue(val.toString()).build();
+        throw new IllegalArgumentException(
+                "Unsupported serialization type: " + val.getClass().getName());
     }
 
     // ─────────── GraalVM Value → Protobuf ───────
 
     /**
-     * Serialize a GraalVM Value to protobuf SerializedValue.
-     * Handles all JS types including functions (source extraction) and nested objects/arrays.
+     * Polyglot → wire. The hot path is DynamicContextProxy.putMember when a
+     * script does context.foo = something — we get a Polyglot Value and need
+     * to encode it for the proto.
      *
-     * @param val The GraalVM Value to serialize.
-     * @return The serialized protobuf SerializedValue.
+     * Trait order matters here: isNull first, then primitives, then canExecute
+     * (so a function routes through source extraction before hasMembers picks
+     * it up by mistake), then arrays, then the DynamicContextProxy escape
+     * hatch (otherwise hasMembers would walk it and trigger cascading
+     * callbacks for every property), then plain objects. Anything that falls
+     * past hasMembers throws with a full trait fingerprint — no toString
+     * fallback, no silent string corruption sneaking onto the wire.
      */
     public static SerializedValue serializeGraalValue(Value val) {
         if (val == null || val.isNull()) {
@@ -228,8 +239,17 @@ public final class ValueSerializationUtils {
             return SerializedValue.newBuilder()
                     .setMapValue(mb.build()).build();
         }
-        return SerializedValue.newBuilder()
-                .setStringValue(val.toString()).build();
+        throw new IllegalStateException(
+                "Cannot serialize Polyglot Value to wire: unmatched shape. " +
+                        "isNull=" + val.isNull() +
+                        ", isString=" + val.isString() +
+                        ", isNumber=" + val.isNumber() +
+                        ", isBoolean=" + val.isBoolean() +
+                        ", canExecute=" + val.canExecute() +
+                        ", hasArrayElements=" + val.hasArrayElements() +
+                        ", isProxyObject=" + val.isProxyObject() +
+                        ", hasMembers=" + val.hasMembers() +
+                        ", toString=" + val);
     }
 
     // ─────────── GraalVM Value → Java (for caching/in-process use) ────────
@@ -260,11 +280,17 @@ public final class ValueSerializationUtils {
     // ─────────── Function Source Extraction ──────────────────────────────
 
     /**
-     * Extract JavaScript function source code from a GraalVM Value.
-     * Tries getSourceLocation() first, falls back to toString().
+     * Recovers the source text of a GraalJS-parsed function so it can be shipped
+     * over the wire and recompiled on IS. The first stop is getSourceLocation();
+     * for inline-defined functions that's reliable. If that's null we fall to
+     * toString() — but only accept it if it actually looks function-shaped
+     * (contains "function" or "=>").
      *
-     * @param val The GraalVM Value representing a function.
-     * @return The function source code string.
+     * Anything else is almost certainly someone capturing a host-function stub
+     * (e.g. context.x = Log) — those have no script-side source. We used to
+     * silently emit "function(){}" and ship a no-op across the wire; now we
+     * throw so the broken capture surfaces at write time instead of as a
+     * mysteriously inert callback later.
      */
     public static String extractFunctionSource(Value val) {
         String source = null;
@@ -295,17 +321,17 @@ public final class ValueSerializationUtils {
                 (source.contains("function") || source.contains("=>"))) {
             return source;
         }
-        if (source == null || source.isEmpty()) {
-            log.warn("Could not extract valid function source, using fallback");
-        }
-        return source != null ? source : "function(){}";
+        throw new IllegalStateException(
+                "Cannot extract function source for serialization. Likely a host-function stub " +
+                        "or other non-source-bearing executable was captured into a binding and is " +
+                        "being serialized — these have no script-side source to ship to IS. " +
+                        "isProxyObject=" + val.isProxyObject() +
+                        ", hasSourceLocation=" + (val.getSourceLocation() != null) +
+                        ", toString=" + (source != null ? source : "<null>"));
     }
 
     // ─────────── Private helpers ──────────────────────────────────────────
 
-    /**
-     * Create a null SerializedValue.
-     */
     private static SerializedValue nullValue() {
         return SerializedValue.newBuilder()
                 .setNullValue(ByteString.EMPTY).build();
@@ -323,9 +349,6 @@ public final class ValueSerializationUtils {
                 .build();
     }
 
-    /**
-     * Serialize a Java array to protobuf.
-     */
     private static SerializedValue serializeArray(Object[] arr) {
         SerializedArray.Builder arrayBuilder = SerializedArray.newBuilder();
         for (Object element : arr) {
@@ -334,9 +357,6 @@ public final class ValueSerializationUtils {
         return SerializedValue.newBuilder().setArrayValue(arrayBuilder.build()).build();
     }
 
-    /**
-     * Serialize a Java List to protobuf.
-     */
     private static SerializedValue serializeList(List<?> list) {
         SerializedArray.Builder arrayBuilder = SerializedArray.newBuilder();
         for (Object element : list) {
@@ -345,9 +365,6 @@ public final class ValueSerializationUtils {
         return SerializedValue.newBuilder().setArrayValue(arrayBuilder.build()).build();
     }
 
-    /**
-     * Serialize a Java Map to protobuf.
-     */
     private static SerializedValue serializeMap(Map<String, Object> map) {
         SerializedMap.Builder mapBuilder = SerializedMap.newBuilder();
         for (Map.Entry<String, Object> entry : map.entrySet()) {

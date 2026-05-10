@@ -63,24 +63,14 @@ class DynamicContextProxy implements ProxyObject {
                 proxyType, basePath, memberKeys != null ? memberKeys.length : "none");
     }
 
-    /**
-     * Get the proxy type (e.g., "context", "authenticateduser", "step").
-     */
     public String getProxyType() {
         return proxyType;
     }
 
-    /**
-     * Get the base path for nested property access (e.g., "currentKnownSubject",
-     * "steps.1").
-     */
     public String getBasePath() {
         return basePath;
     }
 
-    /**
-     * Get the session ID this proxy belongs to.
-     */
     public String getSessionId() {
         return sessionId;
     }
@@ -177,9 +167,12 @@ class DynamicContextProxy implements ProxyObject {
 
     @Override
     public boolean hasMember(String key) {
-        // Try to get the member and check if it exists
-        Object member = getMember(key);
-        return member != null;
+        // Mirror local-mode JsGraal* wrapper behaviour: every wrapper IS uses
+        // (JsGraalAuthenticationContext, JsGraalAuthenticatedUser, JsGraalClaims, …)
+        // returns true unconditionally from hasMember. Returning the same answer here
+        // keeps script semantics identical across LOCAL and REMOTE
+        // and avoids an extra round-trip per membership probe.
+        return true;
     }
 
     @Override

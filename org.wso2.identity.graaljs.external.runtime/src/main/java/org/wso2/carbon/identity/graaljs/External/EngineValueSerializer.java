@@ -146,7 +146,18 @@ class EngineValueSerializer {
             }
             return SerializedValue.newBuilder().setMapValue(map).build();
         }
-        return SerializedValue.newBuilder().setStringValue(val.toString()).build();
+        throw new IllegalStateException(
+                "Cannot serialize Polyglot Value to wire (binding extract / script result): " +
+                        "unmatched shape. " +
+                        "isNull=" + val.isNull() +
+                        ", isString=" + val.isString() +
+                        ", isNumber=" + val.isNumber() +
+                        ", isBoolean=" + val.isBoolean() +
+                        ", canExecute=" + val.canExecute() +
+                        ", hasArrayElements=" + val.hasArrayElements() +
+                        ", isProxyObject=" + val.isProxyObject() +
+                        ", hasMembers=" + val.hasMembers() +
+                        ", toString=" + val);
     }
 
     /**
@@ -211,18 +222,23 @@ class EngineValueSerializer {
                 // Get callback client from ThreadLocal (set by calling methods)
                 HostCallbackClient callbackClient = currentCallbackClient.get();
                 if (callbackClient == null) {
-                    log.warn("[External] No callback client available for proxy object, returning null");
-                    return null;
+                    throw new IllegalStateException(
+                            "Cannot deserialize PROXY_OBJECT: no callback client set on " +
+                                    "EngineValueSerializer ThreadLocal. Caller must invoke " +
+                                    "setCallbackClient(...) before deserializeValue when proxy markers " +
+                                    "are possible. proxyType=" + proxyType + ", referenceId=" + referenceId);
                 }
 
                 return new DynamicContextProxy(
                         callbackClient.getSessionId(),
                         callbackClient,
-                        proxyType, // "pojo" or specific type
+                        proxyType,
                         basePath
                 );
             default:
-                return null;
+                throw new IllegalStateException(
+                        "Unrecognized SerializedValue case during binding restore: " + sv.getValueCase() +
+                                ". Wire schema may have evolved beyond this consumer's version.");
         }
     }
 }

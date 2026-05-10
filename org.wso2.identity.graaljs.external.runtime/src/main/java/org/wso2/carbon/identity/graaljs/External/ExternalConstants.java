@@ -29,7 +29,6 @@ package org.wso2.carbon.identity.graaljs.External;
  * 3. Proxy markers  - Serialized proxy metadata fields
  * 4. Binding keys   - Reserved binding names
  * 5. Path/transport - Path separator
- * 6. Proxy types    - Proxy type identifiers
  */
 public final class ExternalConstants {
 
@@ -85,11 +84,6 @@ public final class ExternalConstants {
 
     /** Separator used in property paths (e.g., "steps::1::subject"). */
     public static final String PATH_SEPARATOR = "::";
-
-    // ============ Proxy Types ============
-
-    /** Proxy type for generic POJO objects. */
-    public static final String PROXY_TYPE_POJO = "pojo";
 
     // ============ mTLS Configuration ============
     // mTLS is mandatory on the gRPC server. The stream carries the full

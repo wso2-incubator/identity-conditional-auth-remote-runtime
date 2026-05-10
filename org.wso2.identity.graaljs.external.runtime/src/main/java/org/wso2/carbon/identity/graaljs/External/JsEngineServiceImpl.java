@@ -367,8 +367,10 @@ public class JsEngineServiceImpl {
     }
 
     /**
-     * Register host function stubs dynamically based on the list from the request.
-     * This allows all JsFunctionRegistry functions to be callable from JavaScript.
+     * Walks the host-function list in the request and binds one HostFunctionStub
+     * per name into the script bindings. IS controls what's registered — there
+     * are no defaults synthesised here, and an empty list is treated as a
+     * regression on IS rather than something to silently paper over.
      */
     private void registerHostFunctionStubsFromRequest(Value bindings, HostCallbackClient callbackClient,
             java.util.List<HostFunctionDefinition> hostFunctions) {
@@ -384,24 +386,18 @@ public class JsEngineServiceImpl {
         // @HostAccess.Export method on the registered instance. No special
         // case for Log on this side; the runtime carries no logger of its own.
         if (hostFunctions == null || hostFunctions.isEmpty()) {
-            // Legacy fallback for older IS clients that did not send the
-            // host-function list. "Log" is included here so adaptive scripts
-            // calling Log.info(...) still work via the same dotted routing.
-            String[] defaultFuncNames = { "executeStep", "sendError", "fail", "showPrompt",
-                    "loadLocalLibrary", "getSecretByName", "selectAcrFrom", "Log" };
-            for (String funcName : defaultFuncNames) {
-                bindings.putMember(funcName, new HostFunctionStub(funcName, callbackClient));
-                registeredFunctions.add(funcName);
+            throw new IllegalStateException(
+                    "Empty hostFunctions list received from IS. The IS-side RemoteJsEngine must " +
+                            "populate HostFunctionDefinition entries on every evaluate/callback request; " +
+                            "an empty list indicates a producer-side regression or a version mismatch.");
+        }
+        for (HostFunctionDefinition funcDef : hostFunctions) {
+            String funcName = funcDef.getName();
+            if (log.isDebugEnabled()) {
+                log.debug("[External] Registering host function stub: {}", funcName);
             }
-        } else {
-            for (HostFunctionDefinition funcDef : hostFunctions) {
-                String funcName = funcDef.getName();
-                if (log.isDebugEnabled()) {
-                    log.debug("[External] Registering host function stub: {}", funcName);
-                }
-                bindings.putMember(funcName, new HostFunctionStub(funcName, callbackClient));
-                registeredFunctions.add(funcName);
-            }
+            bindings.putMember(funcName, new HostFunctionStub(funcName, callbackClient));
+            registeredFunctions.add(funcName);
         }
 
         // Store for isHostFunction checks
