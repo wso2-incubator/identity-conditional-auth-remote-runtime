@@ -110,7 +110,7 @@ class DynamicContextProxy implements ProxyObject {
                             key, response.getProxyType(),
                             proxyMemberKeys != null ? proxyMemberKeys.length : "none");
                 }
-                value = new DynamicContextProxy(
+                value = ProxyFactory.fromMarker(
                         sessionId, callbackClient,
                         response.getProxyType(), propertyPath, proxyMemberKeys);
             } else {

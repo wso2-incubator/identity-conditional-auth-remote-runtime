@@ -125,7 +125,7 @@ class HostFunctionStub implements ProxyExecutable, ProxyObject {
                         log.debug("[External-Stub] Creating DynamicContextProxy for host function return: " +
                                 "type={}, refId={}, basePath={}", proxyType, referenceId, basePath);
                     }
-                    return new DynamicContextProxy(
+                    return ProxyFactory.fromMarker(
                             callbackClient.getSessionId(), callbackClient, proxyType, basePath);
                 }
             }
@@ -147,7 +147,7 @@ class HostFunctionStub implements ProxyExecutable, ProxyObject {
                             String proxyType = (String) elementMap.get(ExternalConstants.PROXY_TYPE_FIELD);
                             String referenceId = (String) elementMap.get(ExternalConstants.REFERENCE_ID_FIELD);
                             String basePath = ExternalConstants.PROXY_REF_PREFIX + referenceId;
-                            elements[i] = new DynamicContextProxy(
+                            elements[i] = ProxyFactory.fromMarker(
                                     callbackClient.getSessionId(), callbackClient, proxyType, basePath);
                             hasProxyElements = true;
                             log.debug("[DEBUG-External] List element[" + i +

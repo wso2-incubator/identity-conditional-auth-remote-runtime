@@ -229,7 +229,7 @@ class EngineValueSerializer {
                                     "are possible. proxyType=" + proxyType + ", referenceId=" + referenceId);
                 }
 
-                return new DynamicContextProxy(
+                return ProxyFactory.fromMarker(
                         callbackClient.getSessionId(),
                         callbackClient,
                         proxyType,
