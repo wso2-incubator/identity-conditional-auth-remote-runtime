@@ -123,19 +123,36 @@ final class PropertyPathNavigator {
     }
 
     /**
-     * Navigate a single step in the property path (for GET operations).
-     * Handles ProxyArray, ProxyObject, Map, and reflection getter.
+     * Walks one segment along a property path. Numeric segments index into a
+     * ProxyArray, "length" reads the array size, anything else is a ProxyObject
+     * member lookup. Falls off the end deliberately — no Map fallback, no
+     * reflection — so misuse fails loud rather than coercing through some
+     * half-working path.
      */
     private static Object navigateSingleStep(Object current, String part) {
         // Numeric segments on ProxyArray use get(index), not getMember()
-        if (isNumeric(part) && current instanceof ProxyArray) {
-            int index = Integer.parseInt(part);
-            Object result = ((ProxyArray) current).get(index);
-            if (JsGraalGraphEngineModeRouter.isTracingEnabled() && log.isDebugEnabled()) {
-                log.debug("[PropertyPathNavigator] Accessed array index " + index + " -> " +
-                        (result != null ? result.getClass().getSimpleName() : "null"));
+        if (current instanceof ProxyArray) {
+            ProxyArray proxyArray = (ProxyArray) current;
+
+            if (isNumeric(part)) {
+                int index = Integer.parseInt(part);
+                Object result = proxyArray.get(index);
+
+                if (JsGraalGraphEngineModeRouter.isTracingEnabled() && log.isDebugEnabled()) {
+                    log.debug("[PropertyPathNavigator] Accessed array index " + index + " -> " +
+                            (result != null ? result.getClass().getSimpleName() : "null"));
+                }
+                return result;
             }
-            return result;
+
+            if ("length".equals(part)) {
+                long size = proxyArray.getSize();
+
+                if (JsGraalGraphEngineModeRouter.isTracingEnabled() && log.isDebugEnabled()) {
+                    log.debug("[PropertyPathNavigator] Accessed array length -> " + size);
+                }
+                return size;
+            }
         }
 
         // Standard member access on ProxyObject
@@ -155,8 +172,10 @@ final class PropertyPathNavigator {
 
     }
     /**
-     * Set the final property value on the parent object.
-     * Tries ProxyObject.putMember, reflection putMember, Map.put, and reflection setter.
+     * Writes the final path segment. The parent must be a ProxyObject; we wrap
+     * the value as a Polyglot Value and call putMember. Anything else throws —
+     * we don't reach for reflection or Map.put as cleanup paths because that
+     * would let bad upstream code pass through silently.
      */
     private static boolean setFinalProperty(Object parent, String finalPart, Object value) {
         // Try ProxyObject.putMember with GraalVM Value wrapping
@@ -183,8 +202,10 @@ final class PropertyPathNavigator {
     }
 
     /**
-     * Get member keys from an object.
-     * Handles ProxyObject (getMemberKeys)
+     * Returns whatever the ProxyObject hands back from getMemberKeys() — a
+     * String[], Object[], or ProxyArray, depending on which JsGraal* wrapper
+     * produced it. Member-key enumeration is a ProxyObject concept; ProxyArray
+     * and any other shape get an exception so the caller learns at the source.
      */
     public static Object getMemberKeys(Object current) {
         if (current instanceof ProxyObject) {

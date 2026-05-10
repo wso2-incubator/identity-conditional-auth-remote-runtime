@@ -39,10 +39,13 @@ final class MemberKeyExtractor {
     }
 
     /**
-     * Extract member keys from the given keys object and add them to the response builder.
-     *
-     * @param keys            The keys object (String[], Object[], or ProxyArray).
-     * @param responseBuilder The response builder to add keys to.
+     * Flattens whatever ProxyObject.getMemberKeys() handed back — different
+     * JsGraal* wrappers return String[], Object[], or a ProxyArray wrapping
+     * one of those, depending on what their parent class chose — and writes
+     * a flat list into the response builder's member_keys field. Nested
+     * arrays are unwrapped one level; anything genuinely unexpected gets
+     * String.valueOf'd, which is the only place in this path we accept a
+     * coercion rather than throw.
      */
     static void extractTo(Object keys, ContextPropertyResponse.Builder responseBuilder) {
 

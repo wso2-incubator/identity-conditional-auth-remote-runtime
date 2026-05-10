@@ -328,10 +328,12 @@ public class RemoteJsGraalGraphBuilder extends JsGraalGraphBuilder {
     // =============================================================================================
 
     /**
-     * Remote JavaScript Decision Evaluator implementation.
-     * This handles callback execution (e.g., onSuccess/onFail after a step completes)
-     * by sending the serialized function to the external sidecar for evaluation.
-     * The graph is re-organized based on the execution result, exactly as the local evaluator does.
+     * The remote-mode counterpart of JsGraalGraphBuilder.JsBasedEvaluator.
+     * Same shape — handle a callback function, run it, restructure the graph
+     * based on the result — but the body has nothing in common with its local
+     * cousin. The local one drives an in-JVM Polyglot Context; this one ships
+     * the function source over gRPC and lets the sidecar run it. Don't try to
+     * unify the two without first extracting a real template hook on the parent.
      */
     public class RemoteJsBasedEvaluator implements AuthenticationDecisionEvaluator {
 

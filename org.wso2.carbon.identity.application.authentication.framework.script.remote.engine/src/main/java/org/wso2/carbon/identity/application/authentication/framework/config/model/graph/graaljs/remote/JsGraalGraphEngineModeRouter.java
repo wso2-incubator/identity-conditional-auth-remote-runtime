@@ -28,18 +28,15 @@ import static org.wso2.carbon.identity.application.authentication.framework.conf
 import static org.wso2.carbon.identity.application.authentication.framework.config.model.graph.graaljs.remote.RemoteEngineConfigConstants.GRAALJS_REMOTE_ENGINE_TRACING;
 
 /**
- * Holder for remote-engine deployment-time configuration consumed inside this bundle.
- * <p>
- * Owns the gRPC target and tracing toggle read from {@code IdentityUtil}; both are
- * needed by remote transport code (e.g. {@code RemoteJsGraalGraphBuilder}) and by
- * verbose-log guards in {@code HostFunctionRegistry}. Engine-mode dispatch (LOCAL /
- * REMOTE / HYBRID) and the per-request HYBRID decision now live in the framework
- * (consumed via {@code ScriptEngineModeResolver}); this class is intentionally
- * scoped to remote-engine specifics so the framework never needs to read this
- * bundle's settings.
- * <p>
- * The {@code Router} naming is retained for source-history continuity even though
- * the per-request routing role moved to the framework.
+ * Reads two settings from IdentityUtil — the gRPC target and the tracing toggle —
+ * and caches them for the rest of the bundle to consume. Lazy on first call so
+ * IdentityUtil's config is fully wired by the time anyone reads it. Used by the
+ * remote transport code (RemoteJsGraalGraphBuilder) and the verbose-log guards
+ * in HostFunctionRegistry; nothing outside this bundle should care.
+ *
+ * The "Router" in the name is a leftover. This class used to dispatch LOCAL
+ * vs REMOTE vs HYBRID per request; that logic has since moved to the framework
+ * (see ScriptEngineModeResolver). The name stayed put to keep imports stable.
  */
 public class JsGraalGraphEngineModeRouter {
 
