@@ -204,8 +204,9 @@ final class PropertyPathNavigator {
     /**
      * Returns whatever the ProxyObject hands back from getMemberKeys() — a
      * String[], Object[], or ProxyArray, depending on which JsGraal* wrapper
-     * produced it. Member-key enumeration is a ProxyObject concept; ProxyArray
-     * and any other shape get an exception so the caller learns at the source.
+     * produced it. For a ProxyArray, returns index strings sized from getSize()
+     * to mirror how Polyglot derives keys on a LOCAL ProxyArray (Object.keys(arr)
+     * gives "0", "1", …). Any other shape throws so the caller learns at the source.
      */
     public static Object getMemberKeys(Object current) {
         if (current instanceof ProxyObject) {
@@ -215,6 +216,17 @@ final class PropertyPathNavigator {
                         (keys != null ? keys.getClass().getSimpleName() : "null"));
             }
             return keys;
+        }
+        if (current instanceof ProxyArray) {
+            long size = ((ProxyArray) current).getSize();
+            String[] indices = new String[(int) size];
+            for (int i = 0; i < size; i++) {
+                indices[i] = Integer.toString(i);
+            }
+            if (JsGraalGraphEngineModeRouter.isTracingEnabled() && log.isDebugEnabled()) {
+                log.debug("[PropertyPathNavigator] __keys__ on array -> " + size + " indices");
+            }
+            return indices;
         }
         throw new IllegalStateException(
                 "Cannot extract keys from type: " + current.getClass().getName()
