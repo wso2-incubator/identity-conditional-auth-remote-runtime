@@ -147,22 +147,25 @@ class DynamicContextProxy implements ProxyObject {
             String propertyPath = basePath.isEmpty() ? ExternalConstants.KEYS_PROPERTY : basePath + ExternalConstants.PATH_SEPARATOR + ExternalConstants.KEYS_PROPERTY;
             ContextPropertyResponse response = callbackClient.getContextProperty(propertyPath, proxyType);
 
-            if (response.getSuccess() && response.getMemberKeysCount() > 0) {
-                String[] keys = response.getMemberKeysList().toArray(new String[0]);
-                if (log.isDebugEnabled()) {
-                    log.debug("[DynamicContextProxy] Retrieved {} member keys: {}", keys.length,
-                            java.util.Arrays.toString(keys));
-                }
-                return keys;
+            if (!response.getSuccess()) {
+                // IS-side resolution of __keys__ failed. Surface it instead of silently
+                // returning empty — LOCAL mode would propagate the underlying exception,
+                // and the silent-empty was masking real IS-side errors.
+                throw new IllegalStateException(
+                        "getMemberKeys failed for path '" + basePath + "' (proxyType=" + proxyType +
+                                "): " + response.getErrorMessage());
             }
+            String[] keys = response.getMemberKeysList().toArray(new String[0]);
+            if (log.isDebugEnabled()) {
+                log.debug("[DynamicContextProxy] Retrieved {} member keys: {}", keys.length,
+                        java.util.Arrays.toString(keys));
+            }
+            return keys;
         } catch (IOException e) {
             log.error("[DynamicContextProxy] Error getting member keys: {}", e.getMessage());
             throw new UncheckedIOException(
                     "[DynamicContextProxy] Failed to get member keys for path '" + basePath + "' from IS", e);
         }
-
-        // Return empty array if we can't get keys
-        return new String[0];
     }
 
     @Override

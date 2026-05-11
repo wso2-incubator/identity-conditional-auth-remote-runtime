@@ -86,18 +86,21 @@ class DynamicContextProxyArray implements ProxyArray {
             ContextPropertyResponse response = callbackClient.getContextProperty(propertyPath, proxyType);
 
             if (!response.getSuccess()) {
-                log.debug("[DynamicContextProxyArray] length read failed for path '{}': {}",
-                        propertyPath, response.getErrorMessage());
-                return 0L;
+                // IS-side length resolution failed. Surface it instead of silently
+                // returning zero — LOCAL ProxyArray.getSize would propagate the
+                // underlying exception, and the silent-zero was masking real errors.
+                throw new IllegalStateException(
+                        "getSize failed for path '" + propertyPath + "' (proxyType=" + proxyType +
+                                "): " + response.getErrorMessage());
             }
 
             Object value = ValueSerializationUtils.deserialize(response.getValue());
             if (value instanceof Number) {
                 return ((Number) value).longValue();
             }
-            log.debug("[DynamicContextProxyArray] length came back as non-number for path '{}': {}",
-                    propertyPath, value);
-            return 0L;
+            throw new IllegalStateException(
+                    "getSize for path '" + propertyPath + "' returned non-numeric value: " +
+                            (value != null ? value.getClass().getName() + "=" + value : "null"));
 
         } catch (IOException e) {
             log.error("[DynamicContextProxyArray] Error getting array length for '{}': {}",
